@@ -9,10 +9,10 @@ import org.reflections.util.ClasspathHelper;
 import org.reflections.util.Utils;
 
 import javax.annotation.Nullable;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Field;
 import java.net.*;
 import java.util.*;
 import java.util.jar.JarFile;
@@ -191,7 +191,7 @@ public abstract class Vfs {
 
         return null;
     }
-    
+
     private static boolean hasJarFileInPath(URL url) {
 		return url.toExternalForm().matches(".*\\.jar(\\!.*|$)");
 	}
@@ -257,6 +257,14 @@ public abstract class Vfs {
 
             public Vfs.Dir createDir(URL url) throws Exception {
                 Object content = url.openConnection().getContent();
+
+                if (content.getClass().getName().equals("org.jboss.vfs.VirtualJarInputStream")) {
+                    Class<?> virtualJarInputStream = ClasspathHelper.contextClassLoader().loadClass("org.jboss.vfs.VirtualJarInputStream");
+                    Field f = virtualJarInputStream.getDeclaredField("root");
+                    f.setAccessible(true);
+                    content = f.get(content);
+                }
+
                 Class<?> virtualFile = ClasspathHelper.contextClassLoader().loadClass("org.jboss.vfs.VirtualFile");
                 java.io.File physicalFile = (java.io.File) virtualFile.getMethod("getPhysicalFile").invoke(content);
                 String name = (String) virtualFile.getMethod("getName").invoke(content);
